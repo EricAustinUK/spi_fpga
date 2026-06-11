@@ -10,3 +10,6 @@ void cnf_spi_pins(){
     NRF_SPIM0->PSEL.MOSI = 15;
 }
 
+void send_arr(uint32_t *arr, uint32_t size){
+
+}

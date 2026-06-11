@@ -1,0 +1,34 @@
+{
+	"presentation": {
+		"reveal": "always",
+		"panel": "dedicated"
+	},
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "CODAL build + copy hex + read serial",
+			"command": "cd firmware && python3 build.py && cp MICROBIT.hex -v $MICROBIT_PATH",
+			// microbit path and serial node can be set as an environment variable (or changed here)
+			// task quits any previous micro:bit step counter screens before creating a new one 
+			"windows": {
+				"command": "cd firmware && py build.py ** copy MICROBIT.hex $MICROBIT_PATH"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "CODAL clean build",
+			"command": "cd firmware && python build.py --clean",
+			"windows": {
+				"command": "py build.py --clean"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
+		}
+	]
+}
