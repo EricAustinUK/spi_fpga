@@ -15,18 +15,19 @@ void cnf_spi_pins(){
 
 void send_arr(uint8_t *arr, uint32_t size){
     cnf_spi_pins();
-    NRF_SPIM0->EVENTS_END = 0;
+    NRF_SPIM0->EVENTS_END = 0; // clear event register
 
-    NRF_SPIM0->TXD.PTR = (uint32_t)arr;
+    // configure TX buffer
+    NRF_SPIM0->TXD.PTR = (uint32_t)arr; 
     NRF_SPIM0->TXD.MAXCNT = (size); 
     
-    NRF_SPIM0->ENABLE = 0b111;
+    NRF_SPIM0->ENABLE = 0b111; // enable SPI peripheral
 
-    NRF_SPIM0->TASKS_START = 1;
+    NRF_SPIM0->TASKS_START = 1; // start sending array
 
-    while(NRF_SPIM0->EVENTS_END==0);
+    while(NRF_SPIM0->EVENTS_END==0); // busy wait (for now)
 
-    NRF_SPIM0->TASKS_STOP = 1;
+    NRF_SPIM0->TASKS_STOP = 1; // stop sending when buffer is sent
     
-    NRF_SPIM0->ENABLE = 0;
+    NRF_SPIM0->ENABLE = 0; // disable peripheral
 }
