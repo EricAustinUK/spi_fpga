@@ -1,0 +1,13 @@
+//Copyright (C)2014-2026 Gowin Semiconductor Corporation.
+//All rights reserved. 
+//File Title: Physical Constraints file
+//Tool Version: V1.9.12.02_SP2
+//Part Number: GW1NZ-LV1QN48C6/I5
+//Device: GW1NZ-1
+//Device Version: D
+//Created Time: Thu 06 11 14:58:54 2026
+
+IO_LOC "cout" 11;
+IO_PORT "cout" IO_TYPE=LVCMOS18 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=1.8;
+IO_LOC "sum" 10;
+IO_PORT "sum" IO_TYPE=LVCMOS18 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=1.8;
