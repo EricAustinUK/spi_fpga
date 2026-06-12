@@ -27,7 +27,7 @@ module adder (
     );
 
 
-    assign sum = ~sum_not;
-    assign cout = ~(_cout1 | _cout2);
+    assign sum = cin;
+    assign cout = _cout1 | _cout2;
 
 endmodule

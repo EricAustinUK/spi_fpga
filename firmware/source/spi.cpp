@@ -13,7 +13,7 @@ void cnf_spi_pins(){
     NRF_SPIM0 -> CONFIG = 0b000;
 }
 
-void send_arr(uint8_t *arr, uint32_t size){
+void spi_send_arr(uint8_t *arr, uint32_t size){
     cnf_spi_pins();
     NRF_SPIM0->EVENTS_END = 0; // clear event register
 
