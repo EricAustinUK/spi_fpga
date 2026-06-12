@@ -1,16 +1,16 @@
 module adder (
-    //input wire a,
-    //input wire b,
-    //input wire cin,
+    input wire a,
+    input wire b,
+    input wire cin,
     output wire sum,
     output wire cout
 );
 
-    wire _sum, _cout1, _cout2, sum_not;
-    wire cin = 1'b1;
-    wire a = 1'b1;
-    wire b = 1'b1;
+    wire _sum, _cout1, _cout2;
     
+    assign cin = 1'bz;
+    assign a   = 1'bz;
+    assign b   = 1'bz;
 
     half_adder ha_1(
         .a(a),
@@ -22,12 +22,10 @@ module adder (
     half_adder ha_2(
         .a(_sum),
         .b(cin),
-        .sum(sum_not),
+        .sum(sum),
         .cout(_cout2)
     );
 
-
-    assign sum = cin;
     assign cout = _cout1 | _cout2;
 
 endmodule

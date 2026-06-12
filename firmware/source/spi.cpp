@@ -9,7 +9,7 @@ void cnf_spi_pins(){
     NRF_SPIM3->PSEL.MISO = 0xFFFFFFFF;  // blanking MISO for now
     NRF_SPIM3->PSEL.MOSI = 13; // telling SPI peripheral to send over pin 15
     NRF_SPIM3->PSEL.CSN = 34; // lets send CS over 16 as well so its easier to implement the slave
-    NRF_SPIM3->FREQUENCY = 0x80000000; // frequency to 8MHz
+    NRF_SPIM3->FREQUENCY = 0x04000000; // frequency to 8MHz
     NRF_SPIM3->CONFIG = 0b000;
     NRF_SPIM3->RXD.MAXCNT = 0;
 
