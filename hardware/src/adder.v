@@ -7,10 +7,6 @@ module adder (
 );
 
     wire _sum, _cout1, _cout2;
-    
-    assign cin = 1'bz;
-    assign a   = 1'bz;
-    assign b   = 1'bz;
 
     half_adder ha_1(
         .a(a),
