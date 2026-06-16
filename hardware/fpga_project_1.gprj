@@ -9,5 +9,6 @@
         <File path="src/half_adder.v" type="file.verilog" enable="1"/>
         <File path="src/spi.v" type="file.verilog" enable="1"/>
         <File path="src/fpga_project_1.cst" type="file.cst" enable="1"/>
+        <File path="src/fpga_project_1.sdc" type="file.sdc" enable="1"/>
     </FileList>
 </Project>

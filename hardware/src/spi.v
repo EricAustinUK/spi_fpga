@@ -1,25 +1,24 @@
 module spi_recv(
     input i_clk,
     input i_mosi,
-    input i_ci
+    input i_cs,
+    output reg [1:0] o_debugrow
 );
 
-reg [27:0] mem_br;
+reg [31:0] mem_br;
 reg [27:0] img_mem [0:27];
 reg [4:0] row = 5'd0;
-reg [4:0] col = 5'd0;
 
 always @(posedge i_clk) begin
-    if (i_ci) begin
-        mem_br[col] <= i_mosi;
-        if(col == 5'd27) begin
-            img_mem[row] <= {mem_br[27:1], i_mosi};
-            row <= row + 5'd1;
-            col <= 5'd0;
-        end else begin
-            col <= col + 5'd1;
-        end
+    if (!i_cs) begin
+        mem_br <= {mem_br[30:0], i_mosi};
     end
+end
+
+always @(posedge i_cs) begin
+    img_mem[row] <= mem_br[27:0];
+    o_debugrow <= mem_br[1:0];
+    row <= row + 5'd1;
 end
 
 endmodule

@@ -1,6 +1,8 @@
 #include "MicroBit.h"
 
-extern void spi_send_arr(volatile uint8_t * arr, uint32_t size);
+
+
+extern void spi_send_arr(volatile uint32_t * arr, uint32_t size);
 
 void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1; // stop other timers
@@ -29,32 +31,44 @@ int main()
     NRF_P0->PIN_CNF[MICROBIT_PIN_ROW1] = 1;
     NRF_P0->OUTCLR =  (1 << MICROBIT_PIN_COL1);
     NRF_P0->OUTSET =  (1 << MICROBIT_PIN_ROW1);
-    
-    // set direction for FPGA adder inputs
-    NRF_P0->PIN_CNF[P0_02] = 1;
-    NRF_P0->PIN_CNF[P0_03] = 1;
-    NRF_P0->PIN_CNF[P0_04] = 1;
 
-    // temp array to send over SPI
-    volatile uint8_t send_arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
-    // starting bits for adder inputs
-    volatile uint8_t drive_bits = 0b111;
+    // A 28x28 matrix pattern with varied row boundaries and a diagonal step
+    volatile uint32_t test_image[28] = {
+        0x0AFFFFFF,
+        0x0FFFFF0A,
+        0x05555555,
+        0x0AAAAAAA,
+        0x0F000000,
+        0x03C00000,
+        0x00F00000,
+        0x003C0000,
+        0x000F0000,
+        0x0003C000,
+        0x0000F000,
+        0x00003C00,
+        0x00000F00,
+        0x000003C0,
+        0x000000F0,
+        0x0000003C,
+        0x0000000F,
+        0x08000000,
+        0x00000001,
+        0x08000001,
+        0x04000002,
+        0x02000004,
+        0x01000008,
+        0x00000000,
+        0x00000000,
+        0x05555555,
+        0x0AAAAAAA,
+        0x0FFFFFFF
+    };
 
-    while(true){
-        spi_send_arr(send_arr, 10);
 
-        // aletrnates adder inputs between 000 and 111
-        if (drive_bits & 0b001) NRF_P0->OUTSET = (1 << P0_02);  
-        else                    NRF_P0->OUTCLR = (1 << P0_02);  
-        if (drive_bits & 0b010) NRF_P0->OUTSET = (1 << P0_03); 
-        else                    NRF_P0->OUTCLR = (1 << P0_03); 
-        if (drive_bits & 0b100) NRF_P0->OUTSET = (1 << P0_04); 
-        else                    NRF_P0->OUTCLR = (1 << P0_04);
-
-        drive_bits +=  1; // because who cares about overflow
-
-        busy_sleep(3000000);
+    for(int i = 0; i < 28; i++){
+        spi_send_arr(&test_image[i], 1);
+        busy_sleep(20);
     }
 }
 
