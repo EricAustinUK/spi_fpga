@@ -5,8 +5,6 @@
     <Version>5</Version>
     <Device name="GW1NZ-1D" pn="GW1NZ-LV1QN48C6/I5">gw1nz1d-003</Device>
     <FileList>
-        <File path="src/adder.v" type="file.verilog" enable="1"/>
-        <File path="src/half_adder.v" type="file.verilog" enable="1"/>
         <File path="src/spi.v" type="file.verilog" enable="1"/>
         <File path="src/fpga_project_1.cst" type="file.cst" enable="1"/>
         <File path="src/fpga_project_1.sdc" type="file.sdc" enable="1"/>
