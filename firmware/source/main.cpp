@@ -2,7 +2,7 @@
 
 
 
-extern void spi_send_arr(volatile uint32_t * arr, uint32_t size);
+extern void spi_send_arr(volatile uint32_t * arr, uint32_t size, bool big_endian);
 
 void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1; // stop other timers
@@ -67,7 +67,7 @@ int main()
 
 
     for(int i = 0; i < 28; i++){
-        spi_send_arr(&test_image[i], 1);
+        spi_send_arr(&test_image[i], 1, true);
         busy_sleep(20);
     }
 }

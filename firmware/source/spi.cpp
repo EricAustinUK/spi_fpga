@@ -21,10 +21,10 @@ void cnf_spi_pins(){
     NRF_P0->OUTSET = (1 << 4);
 }
 
-void spi_send_arr(volatile uint32_t *arr, uint32_t size){
+void spi_send_arr(volatile uint32_t *arr, uint32_t size, bool big_endian){
     cnf_spi_pins();
     NRF_SPIM3->EVENTS_END = 0; // clear event register
-
+    if(big_endian) *arr = __REV(*arr);
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = (uint32_t)arr; 
     NRF_SPIM3->TXD.MAXCNT = (size) * sizeof(uint32_t); 
