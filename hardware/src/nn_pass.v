@@ -9,8 +9,9 @@ module nn_pass(
 wire [63:0] _l1_pass_result;
 wire [255:0] _l2_pass_result;
 wire [127:0] _l3_pass_result;
+reg [6:0] _l4_pass_result [10:0];
 
-wire _l1_data_ready, _l2_data_ready, _l3_data_ready; 
+wire _l1_data_ready, _l2_data_ready, _l3_data_ready, _l4_data_ready; 
 
 nn_pass_l1 l1(
     .i_clk(i_clk),
@@ -33,7 +34,7 @@ nn_pass_l2 l2(
 nn_pass_l3 l3(
     .i_clk(i_clk),
     .i_data_ready(_l2_data_ready),
-    .i_l1(_l2_pass_result),
+    .i_l2(_l2_pass_result),
     .o_pass_result(_l3_pass_result),
     .o_data_ready(_l3_data_ready)
 );
@@ -41,10 +42,18 @@ nn_pass_l3 l3(
 nn_pass_l4 l4(
     .i_clk(i_clk),
     .i_data_ready(_l3_data_ready),
-    .i_l1(_l3_pass_result),
-    .o_pass_result(o_class),
-    .o_data_ready(o_data_ready)
+    .i_l3(_l3_pass_result),
+    .o_pass_result(_l4_pass_result),
+    .o_data_ready(_l4_data_ready)
 );
+
+nn_argmax max(
+    .i_clk(i_clk),
+    .i_data_ready(_l4_data_ready),
+    .i_l4(_l4_pass_result),
+    .o_class(o_class),
+    o_data_ready(o_data_ready)
+)
 
 */
 
@@ -152,6 +161,42 @@ module nn_pass_l2(
 reg [63:0] neuron_weights; // register cache for each input's weights
 
 
+
+always @(posedge i_clk) begin
+    
+end
+
+endmodule
+
+
+module nn_pass_l3(
+    input wire i_clk,
+    input i_data_ready,
+    input [255:0] i_l2, // input from layer 2
+    output reg [127:0] o_pass_result, // layer 3 result
+    output reg o_data_ready // result's ready flag
+);
+
+reg [255:0] neuron_weights; // register cache for each input's weights
+
+
+
+always @(posedge i_clk) begin
+    
+end
+
+endmodule
+
+
+module nn_pass_l4(
+    input wire i_clk,
+    input i_data_ready,
+    input [127:0] i_l3, // input from layer 3
+    output reg [6:0] o_pass_result [10:0], // layer 4 result - will output the raw acc results then handle seperately
+    output reg o_data_ready // result's ready flag
+);
+
+reg [127:0] neuron_weights; // register cache for each input's weights
 
 always @(posedge i_clk) begin
     
