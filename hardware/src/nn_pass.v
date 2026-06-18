@@ -1,4 +1,5 @@
 module nn_pass(
+    input i_clk,
     input i_data_ready,
     input [27:0] i_row, // row pixel input
     output reg o_data_ready,
@@ -12,6 +13,7 @@ wire [127:0] _l3_pass_result;
 wire _l1_data_ready, _l2_data_ready, _l3_data_ready; 
 
 nn_pass_l1 l1(
+    .i_clk(i_clk),
     .i_data_ready(i_data_ready),
     .i_row(i_row),
     .o_pass_result(_l1_pass_result),
@@ -19,6 +21,7 @@ nn_pass_l1 l1(
 );
 
 nn_pass_l2 l2(
+    .i_clk(i_clk),
     .i_data_ready(_l1_data_ready),
     .i_l1(_l1_pass_result),
     .o_pass_result(_l2_pass_result),
@@ -28,6 +31,7 @@ nn_pass_l2 l2(
 /*
 
 nn_pass_l3 l3(
+    .i_clk(i_clk),
     .i_data_ready(_l2_data_ready),
     .i_l1(_l2_pass_result),
     .o_pass_result(_l3_pass_result),
@@ -35,6 +39,7 @@ nn_pass_l3 l3(
 );
 
 nn_pass_l4 l4(
+    .i_clk(i_clk),
     .i_data_ready(_l3_data_ready),
     .i_l1(_l3_pass_result),
     .o_pass_result(o_class),
