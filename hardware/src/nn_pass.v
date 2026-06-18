@@ -9,7 +9,7 @@ module nn_pass(
 wire [63:0] _l1_pass_result;
 wire [255:0] _l2_pass_result;
 wire [127:0] _l3_pass_result;
-reg [6:0] _l4_pass_result [10:0];
+reg [76:0] _l4_pass_result;
 
 wire _l1_data_ready, _l2_data_ready, _l3_data_ready, _l4_data_ready; 
 
@@ -192,7 +192,7 @@ module nn_pass_l4(
     input wire i_clk,
     input i_data_ready,
     input [127:0] i_l3, // input from layer 3
-    output reg [6:0] o_pass_result [10:0], // layer 4 result - will output the raw acc results then handle seperately
+    output reg [76:0] o_pass_result, // layer 4 result - will output the raw acc results then handle seperately
     output reg o_data_ready // result's ready flag
 );
 
@@ -205,13 +205,19 @@ end
 endmodule
 
 // popcount function: count how many pos bits are in the 28 bit word
-function [4:0] popcount;
-    input [27:0] i_bits;
-    integer i;
-    begin
-        popcount = 0;
-        for (i = 0; i < 28; i = i + 1) begin
-            popcount = popcount + i_bits[i];
-        end
-    end
-endfunction
+module popcount #(
+    parameter WORDLENGTH = 67
+)(
+    input [WORDLENGTH-1:0] i_bits,
+    output reg [$clog2(WORDLENGTH):0] o_popcount
+);
+
+integer i;
+
+always @(*) begin
+    o_popcount = 0;
+    for (i = 0; i < WORDLENGTH; i = i + 1)
+        o_popcount = o_popcount + i_bits[i];
+end
+
+endmodule
