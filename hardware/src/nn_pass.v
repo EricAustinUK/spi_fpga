@@ -28,6 +28,9 @@ reg [4:0] prev_row_no = 5'd0; // row number
 reg [5:0] prev_neuron_no = 6'd0; // neuron number
 reg prev_proc = 0;
 
+reg [4:0] counted = 5'd0;
+reg [9:0] acc_val = 10'd0;
+
 always @(posedge i_clk) begin
     current_weights <= mem[mem_addr]; // retrieve l1 weights for this row + node
 
@@ -62,12 +65,16 @@ always @(posedge i_clk) begin
         end
     end
 
+    // delayed pipelining, behind by a cycle
     if (prev_proc) begin
-        reg [4:0] counted = popcount(~(i_row ^ current_weights));
-        reg [9:0] acc_val = (prev_row_no == 0) ? counted : (l1_pass_acc[prev_neuron_no] + counted);
-        
+        counted = popcount(~(i_row ^ current_weights)); // popcount of row XNOR weights
+        // if new row, overwrite accumulator with count, otherwise increment
+        acc_val = (prev_row_no == 0) ? counted : (l1_pass_acc[prev_neuron_no] + counted);
+
+        // add to forward pass accumulator array
         l1_pass_acc[prev_neuron_no] <= acc_val;
         
+        // if row complete, compare against threshold (may be able to optimise with some bit shifts here)
         if (prev_row_no == 27) begin
             o_pass_result[prev_neuron_no] <= (acc_val > BNN_THRESHOLD);
         end
