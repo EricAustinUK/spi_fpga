@@ -1,3 +1,50 @@
+module nn_pass(
+    input i_data_ready,
+    input [27:0] i_row, // row pixel input
+    output reg o_data_ready,
+    output reg [4:0] o_class
+);
+
+wire [63:0] _l1_pass_result;
+wire [255:0] _l2_pass_result;
+wire [127:0] _l3_pass_result;
+
+wire _l1_data_ready, _l2_data_ready, _l3_data_ready; 
+
+nn_pass_l1 l1(
+    .i_data_ready(i_data_ready),
+    .i_row(i_row),
+    .o_pass_result(_l1_pass_result),
+    .o_data_ready(_l1_data_ready)
+);
+
+nn_pass_l2 l2(
+    .i_data_ready(_l1_data_ready),
+    .i_l1(_l1_pass_result),
+    .o_pass_result(_l2_pass_result),
+    .o_data_ready(_l2_data_ready)
+);
+
+/*
+
+nn_pass_l3 l3(
+    .i_data_ready(_l2_data_ready),
+    .i_l1(_l2_pass_result),
+    .o_pass_result(_l3_pass_result),
+    .o_data_ready(_l3_data_ready)
+);
+
+nn_pass_l4 l4(
+    .i_data_ready(_l3_data_ready),
+    .i_l1(_l3_pass_result),
+    .o_pass_result(o_class),
+    .o_data_ready(o_data_ready)
+);
+
+*/
+
+endmodule
+
 module nn_pass_l1(
     input wire i_clk,
     input i_data_ready,
@@ -16,7 +63,7 @@ reg [27:0] current_weights;
 reg [9:0] l1_pass_acc [63:0];
 
 initial begin
-    $readmemb("l1_weights.txt", mem); // lets put layer 1 weights in BRAM
+    $readmemb("weights/l1_weights.txt", mem); // lets put layer 1 weights in BRAM
 end
 
 reg inf_started = 0; // is nn in wider "inference" state
@@ -93,8 +140,17 @@ module nn_pass_l2(
     input wire i_clk,
     input i_data_ready,
     input [63:0] i_l1, // input from layer 1
-    output reg [255:0] o_pass_result // layer 1 result
+    output reg [255:0] o_pass_result, // layer 2 result
+    output reg o_data_ready // result's ready flag
 );
+
+reg [63:0] neuron_weights; // register cache for each input's weights
+
+
+
+always @(posedge i_clk) begin
+    
+end
 
 endmodule
 
