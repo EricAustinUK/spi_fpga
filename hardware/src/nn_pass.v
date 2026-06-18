@@ -2,7 +2,8 @@ module nn_pass_l1(
     input wire i_clk,
     input i_data_ready,
     input [27:0] i_row, // row pixel input
-    output reg [63:0] o_pass_result // result of forward pass
+    output reg [63:0] o_pass_result, // result of forward pass
+    output reg o_data_ready // is result ready
 );
 
 reg [27:0] mem [0:1791]; // this will be the 784 -> 64 layer
@@ -45,6 +46,7 @@ always @(posedge i_clk) begin
         neuron_no <= 0;
         mem_addr <= row_no;
         processing <= 1;
+        o_data_ready <= 0;
     end else if(!i_data_ready) begin // if SPI starts reading again, reset state
         inf_started <= 0;
         // possibly set row no to row + 1? I think forward pass always beats SPI (27MHz vs 8MHz) recv so probably not
@@ -77,9 +79,22 @@ always @(posedge i_clk) begin
         // if row complete, compare against threshold (may be able to optimise with some bit shifts here)
         if (prev_row_no == 27) begin
             o_pass_result[prev_neuron_no] <= (acc_val > BNN_THRESHOLD);
+            if(prev_neuron_no == 63) begin
+                o_data_ready <= 1;
+            end
         end
     end
 end
+
+
+endmodule
+
+module nn_pass_l2(
+    input wire i_clk,
+    input i_data_ready,
+    input [63:0] i_l1, // input from layer 1
+    output reg [255:0] o_pass_result // layer 1 result
+);
 
 endmodule
 
