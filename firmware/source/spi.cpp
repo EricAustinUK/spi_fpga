@@ -64,10 +64,11 @@ void cnf_camera(){
     NRF_TWIM0->FREQUENCY = 0x06400000; // frequency to 400kHz
     NRF_TWIM0->TXD.MAXCNT = 2; // command is two instructions in memory
     NRF_TWIM0->ENABLE = 0b110; // enable twim peripheral
+    NRF_TWIM0->ADDRESS = 0x30; // set to arducams address
 
     volatile sensor_reg * cam_instructions = OV2640_JPEG_INIT;
 
-    for(uint32_t i = 0; ~(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
+    for(uint32_t i = 0; !(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
         volatile sensor_reg * row_ptr = &cam_instructions[i];
         send_i2c_cmd(row_ptr);
     }
