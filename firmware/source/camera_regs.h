@@ -1,8 +1,8 @@
 #include <stdint.h>
 
-struct sensor_reg { uint16_t reg; uint16_t val; };
+struct sensor_reg { uint8_t reg; uint8_t val; };
 
-static const sensor_reg OV2640_JPEG_INIT[] = {
+static volatile sensor_reg OV2640_JPEG_INIT[] = {
   { 0xff, 0x00 },
   { 0x2c, 0xff },
   { 0x2e, 0xdf },

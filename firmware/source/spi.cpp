@@ -62,6 +62,26 @@ void cnf_camera(){
     NRF_TWIM0->PSEL.SCL = 8; // set i2c scl to external pin 20
     NRF_TWIM0->PSEL.SDA = 16; // set i2c sda to external pin 19
     NRF_TWIM0->FREQUENCY = 0x06400000; // frequency to 400kHz
+    NRF_TWIM0->TXD.MAXCNT = 2; // command is two instructions in memory
+    NRF_TWIM0->ENABLE = 1; // enable twim peripheral
+
+    volatile sensor_reg * cam_instructions = OV2640_JPEG_INIT;
+
+    for(uint32_t i = 1; OV2640_JPEG_INIT[i].reg != 0xFF; i++){
+        volatile uint32_t row_ptr = (uint32_t) &cam_instructions[i].reg;
+        send_i2c_cmd(row_ptr);
+    }
+}
+
+void send_i2c_cmd(volatile uint32_t data_ptr){
+    NRF_TWIM0->TXD.PTR = data_ptr; // set pointer to command
+    NRF_TWIM0->EVENTS_STOPPED = 0; // reset flag
+
+    NRF_TWIM0->TASKS_STARTTX = 1; // start transfer over SCCB
+    while(NRF_TWIM0->EVENTS_STOPPED==0); // busy wait
+
+    NRF_TWIM0->TASKS_STOP = 1; // stop sending after its finished
+
 }
 
 void spi_get_img(){
