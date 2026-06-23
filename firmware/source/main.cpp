@@ -1,6 +1,7 @@
 #include "MicroBit.h"
 
 extern void spi_send_arr(volatile uint32_t * arr, uint32_t size, bool big_endian);
+extern void spi_get_img();
 
 void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1; // stop other timers
@@ -55,6 +56,8 @@ int main()
         0x0AAAAAAA,
         0x0FFFFFFF
     };
+
+    spi_get_img();
 
     for(int i = 0; i < 28; i++){
         spi_send_arr(&test_image[i], 1, true);
