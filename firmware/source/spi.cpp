@@ -54,6 +54,17 @@ void spi_send_arr(volatile uint32_t *arr, uint32_t size, bool big_endian){
     NRF_SPIM3->TASKS_STOP = 1; // stop sending when buffer is sent
 }
 
+void send_i2c_cmd(volatile sensor_reg * data_ptr){
+    NRF_TWIM0->TXD.PTR = (uint32_t) data_ptr; // set pointer to command
+    NRF_TWIM0->EVENTS_STOPPED = 0; // reset flag
+
+    NRF_TWIM0->TASKS_STARTTX = 1; // start transfer over SCCB
+    while(NRF_TWIM0->EVENTS_STOPPED==0); // busy wait
+
+    NRF_TWIM0->TASKS_STOP = 1; // stop sending after its finished
+
+}
+
 void cnf_camera(){
     static volatile bool cfgd = false;
     if(cfgd) return;
@@ -76,16 +87,6 @@ void cnf_camera(){
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
 
-void send_i2c_cmd(volatile sensor_reg * data_ptr){
-    NRF_TWIM0->TXD.PTR = (uint32_t) data_ptr; // set pointer to command
-    NRF_TWIM0->EVENTS_STOPPED = 0; // reset flag
-
-    NRF_TWIM0->TASKS_STARTTX = 1; // start transfer over SCCB
-    while(NRF_TWIM0->EVENTS_STOPPED==0); // busy wait
-
-    NRF_TWIM0->TASKS_STOP = 1; // stop sending after its finished
-
-}
 
 void spi_get_img(){
     cnf_spi_pins();
