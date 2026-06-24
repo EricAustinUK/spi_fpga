@@ -88,6 +88,18 @@ void cnf_camera(){
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
 
+void get_img(){
+    cnf_spi_pins();
+    NRF_SPIM3->EVENTS_END=0;
+
+    volatile sensor_reg capture_instructions[] = {
+        { 0x04, 0x01 }, // clear FIFO
+        { 0x04, 0x01 }, // clear FIFO flag? its in arducam's official github...
+        { 0x04, 0x02 }, // start capture
+    }
+
+    //NRF_SPIM3->
+}
 
 void spi_get_img(){
     cnf_spi_pins();
