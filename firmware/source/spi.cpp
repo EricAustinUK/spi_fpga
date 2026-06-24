@@ -52,6 +52,7 @@ void spi_send_arr(volatile uint32_t *arr, uint32_t size, bool big_endian){
 }
 
 void send_i2c_cmd(volatile sensor_reg * data_ptr){
+    NRF_TWIM0->TXD.MAXCNT = 2; // command is two instructions in memory
     NRF_TWIM0->TXD.PTR = (uint32_t) data_ptr; // set pointer to command
     NRF_TWIM0->EVENTS_STOPPED = 0; // reset flag
     NRF_TWIM0->EVENTS_LASTTX = 0;
@@ -73,20 +74,19 @@ void cnf_camera(){
     //if(cfgd) return;
     cfgd = true;
 
-    NRF_TWIM0->PSEL.SCL = 8; // set i2c scl to external pin 20
-    NRF_TWIM0->PSEL.SDA = 16; // set i2c sda to external pin 19
+    NRF_TWIM0->PSEL.SCL = 26; // set i2c scl to external pin 20
+    NRF_TWIM0->PSEL.SDA = 32; // set i2c sda to external pin 19
     NRF_TWIM0->FREQUENCY = 0x06400000; // frequency to 400kHz
-    NRF_TWIM0->TXD.MAXCNT = 2; // command is two instructions in memory
     NRF_TWIM0->ENABLE = 0b110; // enable twim peripheral
     NRF_TWIM0->ADDRESS = 0x30; // set to arducams address
 
-    volatile sensor_reg * cam_instructions = OV2640_JPEG_INIT;
-
+    NRF_P0->PIN_CNF[26]  = (3 << 2);
+    NRF_P0->PIN_CNF[32] = (3 << 2);
 
     for(uint32_t i = 0; !(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
-        volatile sensor_reg * row_ptr = &cam_instructions[i];
+        volatile sensor_reg * row_ptr = &OV2640_JPEG_INIT[i];
         send_i2c_cmd(row_ptr);
-    }
+    }    
 
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
