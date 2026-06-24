@@ -39,10 +39,10 @@ void spi_send_arr(volatile uint32_t *arr, uint32_t size, bool big_endian){
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = (uint32_t)arr; 
     NRF_SPIM3->TXD.MAXCNT = (size) * sizeof(uint32_t); 
-    
-    NRF_SPIM3->TASKS_START = 1; // start sending array
 
     NRF_P0->OUTCLR = (1 << NANO_CSN); // set CS low
+    
+    NRF_SPIM3->TASKS_START = 1; // start sending array
 
     while(NRF_SPIM3->EVENTS_END==0); // busy wait for event to end
 
