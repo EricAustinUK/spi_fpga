@@ -71,7 +71,7 @@ void send_i2c_cmd(volatile sensor_reg * data_ptr){
 
 void cnf_camera(){
     static volatile bool cfgd = false;
-    //if(cfgd) return;
+    if(cfgd) return;
     cfgd = true;
 
     NRF_TWIM0->PSEL.SCL = 26; // set i2c scl to external pin 20
@@ -79,9 +79,6 @@ void cnf_camera(){
     NRF_TWIM0->FREQUENCY = 0x06400000; // frequency to 400kHz
     NRF_TWIM0->ENABLE = 0b110; // enable twim peripheral
     NRF_TWIM0->ADDRESS = 0x30; // set to arducams address
-
-    NRF_P0->PIN_CNF[26]  = (3 << 2);
-    NRF_P0->PIN_CNF[32] = (3 << 2);
 
     for(uint32_t i = 0; !(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
         volatile sensor_reg * row_ptr = &OV2640_JPEG_INIT[i];
