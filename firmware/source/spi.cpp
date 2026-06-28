@@ -76,15 +76,10 @@ void cnf_camera(){
     NRF_TWIM0->ENABLE = 0b110; // enable twim peripheral
     NRF_TWIM0->ADDRESS = 0x30; // set to arducams address
 
-    for(uint32_t i = 0; !(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
-        volatile sensor_reg * row_ptr = &OV2640_JPEG_INIT[i];
+    for(uint32_t i = 0; !(OV2640_QVGA[i].reg == 0xFF && OV2640_QVGA[i].val == 0xFF); i++){
+        volatile sensor_reg * row_ptr = &OV2640_QVGA[i];
         send_i2c_cmd(row_ptr);
     }    
-
-    for(uint32_t i = 0; !(OV2640_640x480_JPEG[i].reg == 0xFF && OV2640_640x480_JPEG[i].val == 0xFF); i++){
-        volatile sensor_reg * row_ptr = &OV2640_640x480_JPEG[i];
-        send_i2c_cmd(row_ptr); 
-    }
 
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
