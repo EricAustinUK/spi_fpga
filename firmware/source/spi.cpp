@@ -115,21 +115,30 @@ uint8_t read_cam_reg(uint8_t reg){
     NRF_SPIM3->TASKS_STOP = 1; // stop when both happen
 
     NRF_P0->OUTSET = (1 << CAM_CSN); // set CS high
+    
+    return value;
 }
 
 void get_img(){
     cnf_spi_pins();
 
-    volatile sensor_reg capture_instructions[] = {
-        { 0x04, 0x01 }, // clear FIFO
-        { 0x04, 0x01 }, // clear FIFO flag? its in arducam's official github...
-        { 0x04, 0x02 }, // start capture
-    };
-
+    write_cam_reg({ 0x04, 0x01 });  // clear FIFO
+    write_cam_reg({ 0x04, 0x01 });  // clear FIFO flag? its in arducam's official github...
+    write_cam_reg({ 0x04, 0x02 });  // start capture
     
+
+    while(!read_cam_reg(0x41)&0x08); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag
+
+    // read each byte of the image buffer's size in memory
+    volatile uint8_t size1 = read_cam_reg(0x42);
+    volatile uint8_t size2 = read_cam_reg(0x43);
+    volatile uint8_t size3 = read_cam_reg(0x44);
+
+    volatile uint32_t size = ((size3 << 16) | (size2 << 8) | size1) & 0x07ffffff; // mask because size3 may contain random data in its more significant bits
 }
 
 void spi_get_img(){
     cnf_spi_pins();
     cnf_camera();
+    get_img();  
 }
