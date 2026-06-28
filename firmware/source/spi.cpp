@@ -58,16 +58,11 @@ void send_i2c_cmd(volatile sensor_reg * data_ptr){
     NRF_TWIM0->EVENTS_STOPPED = 0; // reset flag
     NRF_TWIM0->EVENTS_LASTTX = 0;
 
-    NRF_TWIM0->TASKS_STARTTX = 1; // start transfer over SCCB
-    
-    while(NRF_TWIM0->EVENTS_LASTTX==0); // busy wait for final byte
+    NRF_TWIM0->SHORTS = TWIM_SHORTS_LASTTX_STOP_Msk; // should prevent race condition
 
-    NRF_TWIM0->TASKS_STOP = 1; // issue stop
+    NRF_TWIM0->TASKS_STARTTX = 1; // start transfer over SCCB
 
     while(NRF_TWIM0->EVENTS_STOPPED==0); // busy wait for stop
-
-    NRF_TWIM0->TASKS_STOP = 1; // stop sending after its finished
-
 }
 
 void cnf_camera(){
@@ -86,6 +81,11 @@ void cnf_camera(){
         send_i2c_cmd(row_ptr);
     }    
 
+    for(uint32_t i = 0; !(OV2640_640x480_JPEG[i].reg == 0xFF && OV2640_640x480_JPEG[i].val == 0xFF); i++){
+        volatile sensor_reg * row_ptr = &OV2640_640x480_JPEG[i];
+        send_i2c_cmd(row_ptr); 
+    }
+
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
 
@@ -96,14 +96,14 @@ void write_cam_reg(sensor_reg reg){
 uint8_t read_cam_reg(uint8_t reg){
     // clear event registers
     NRF_SPIM3->EVENTS_END = 0;
-    volatile uint16_t send_packet = (reg << 8);
+    volatile uint16_t send_packet = reg | (0x00 << 8);
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = (uint32_t) &send_packet; 
     NRF_SPIM3->TXD.MAXCNT = 2; 
 
     volatile uint8_t value;
 
-    NRF_SPIM3->RXD.MAXCNT = 1;
+    NRF_SPIM3->RXD.MAXCNT = 2;
     NRF_SPIM3->RXD.PTR = (uint32_t) &value;
 
     NRF_P0->OUTCLR = (1 << CAM_CSN); // set CS low
@@ -122,18 +122,17 @@ uint8_t read_cam_reg(uint8_t reg){
 void get_img(){
     cnf_spi_pins();
 
-    write_cam_reg({ 0xFF, 0x01 });
-    write_cam_reg({ 0x04, 0x01 });  // clear FIFO
-    write_cam_reg({ 0x04, 0x01 });  // clear FIFO flag? its in arducam's official github...
+    write_cam_reg({ 0x04, 0b00110001 });  // clear FIFO and reset r/w pointers
     write_cam_reg({ 0x04, 0x02 });  // start capture
-    write_cam_reg({ 0xFF, 0x00 });    
 
-    while(!(read_cam_reg(0x41))&0x08); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag
+    while(!(read_cam_reg(0x41) & 0x09)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag, with 0x01 for vsync going low
 
     // read each byte of the image buffer's size in memory
     volatile uint8_t size1 = read_cam_reg(0x42);
     volatile uint8_t size2 = read_cam_reg(0x43);
     volatile uint8_t size3 = read_cam_reg(0x44);
+
+    //write_cam_reg({ 0xFF, 0x00 }); // switch back to default reg?
 
     volatile uint32_t size = ((size3 << 16) | (size2 << 8) | size1) & 0x07ffffff; // mask because size3 may contain random data in its more significant bits
 }
