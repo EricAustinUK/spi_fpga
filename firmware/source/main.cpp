@@ -58,7 +58,7 @@ int main()
     };    
 
     for(int i = 0; i < 28; i++){
-        spi_send_arr((uint32_t) &test_image[i], 1, true);
+        spi_send_arr((uint32_t) &test_image[i], 4, true);
         busy_sleep(20);
     }
 

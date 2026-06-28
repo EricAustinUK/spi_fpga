@@ -39,7 +39,7 @@ void spi_send_arr(volatile uint32_t arr_ptr, uint32_t size, bool is_to_nano){
     if(is_to_nano) *((uint32_t *) arr_ptr) = __REV(arr_ptr);
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = arr_ptr; 
-    NRF_SPIM3->TXD.MAXCNT = (size) * sizeof(uint32_t); 
+    NRF_SPIM3->TXD.MAXCNT = size; 
 
     NRF_P0->OUTCLR = (1 << (is_to_nano ? NANO_CSN : CAM_CSN)); // set CS low
     
@@ -122,12 +122,13 @@ uint8_t read_cam_reg(uint8_t reg){
 void get_img(){
     cnf_spi_pins();
 
+    write_cam_reg({ 0xFF, 0x01 });
     write_cam_reg({ 0x04, 0x01 });  // clear FIFO
     write_cam_reg({ 0x04, 0x01 });  // clear FIFO flag? its in arducam's official github...
     write_cam_reg({ 0x04, 0x02 });  // start capture
-    
+    write_cam_reg({ 0xFF, 0x00 });    
 
-    while(!read_cam_reg(0x41)&0x08); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag
+    while(!(read_cam_reg(0x41))&0x08); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag
 
     // read each byte of the image buffer's size in memory
     volatile uint8_t size1 = read_cam_reg(0x42);
