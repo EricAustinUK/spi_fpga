@@ -3,6 +3,7 @@
 
 #define CAM_CSN 9
 #define NANO_CSN 4
+#define IMG_SIZE 160*120*2
 
 void slp_100(){
     NRF_TIMER2->TASKS_STOP = 1; // stop other timers
@@ -144,7 +145,7 @@ uint8_t read_cam_reg(uint8_t reg){
 }
 
 uint8_t * spi_recv_img(uint32_t size){
-    uint8_t values[size];
+    static uint8_t values[IMG_SIZE];
 
     cnf_spi_pins();
     volatile uint8_t burst_cmd = 0x3C;
@@ -157,7 +158,7 @@ uint8_t * spi_recv_img(uint32_t size){
     NRF_SPIM3->TXD.MAXCNT = 1; 
 
     NRF_SPIM3->RXD.PTR = (uint32_t) &values;
-    NRF_SPIM3->RXD.MAXCNT = size;
+    NRF_SPIM3->RXD.MAXCNT = IMG_SIZE;
 
     NRF_P0->OUTCLR = (1 << CAM_CSN); // set CS low
     
@@ -191,18 +192,17 @@ void get_img(){
     while(!(read_cam_reg(0x41) & 0x08)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag, with 0x01 for vsync going low
 
     // read each byte of the image buffer's size in memory
-    volatile uint8_t size1 = read_cam_reg(0x42);
-    volatile uint8_t size2 = read_cam_reg(0x43);
-    volatile uint8_t size3 = read_cam_reg(0x44);
+    //volatile uint8_t size1 = read_cam_reg(0x42);
+    //volatile uint8_t size2 = read_cam_reg(0x43);
+    //volatile uint8_t size3 = read_cam_reg(0x44);
 
     //write_cam_reg({ 0xFF, 0x00 }); // switch back to default reg?
 
-    volatile uint32_t size = ((size3 << 16) | (size2 << 8) | size1) & 0x07ffffff; // mask because size3 may contain random data in its more significant bits
+    //volatile uint32_t size = ((size3 << 16) | (size2 << 8) | size1) & 0x07ffffff; // mask because size3 may contain random data in its more significant bits
 
     
 
-    if(size>0)
-        spi_recv_img(size); // yolo
+    spi_recv_img(IMG_SIZE); // yolo
 }
 
 void spi_get_img(){
