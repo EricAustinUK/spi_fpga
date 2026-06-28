@@ -4,6 +4,26 @@
 #define CAM_CSN 9
 #define NANO_CSN 4
 
+void slp_100ms(){
+    NRF_TIMER2->TASKS_STOP = 1; // stop other timers
+    NRF_TIMER2->BITMODE = 3; // 32 bit
+    NRF_TIMER2->CC[0] = 100000; // set cmp to time
+    NRF_TIMER2->PRESCALER = 4;
+
+    // clear flags
+    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
+    NRF_TIMER2->TASKS_CLEAR = 1;
+
+    // wait for delay to be met
+    NRF_TIMER2->TASKS_START = 1;
+    while(NRF_TIMER2->EVENTS_COMPARE[0] == 0);
+    
+    // clear flags
+    NRF_TIMER2->TASKS_STOP = 1;
+    NRF_TIMER2->TASKS_CLEAR = 1;
+    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
+}
+
 void cnf_spi_pins(){
     static volatile bool cfgd = false;
     if(cfgd) return;
@@ -76,6 +96,14 @@ void cnf_camera(){
     static volatile bool cfgd = false;
     if(cfgd) return;
     cfgd = true;
+    
+    volatile sensor_reg cpld_reset = {0x87, 0x80};
+    spi_send_arr(uint32_t (&cpld_reset), 2, false);
+    slp_100ms(); 
+
+    volatile sensor_reg clear_reset = {0x87, 0x00};
+    spi_send_arr(uint32_t (&clear_reset), 2, false);
+    slp_100ms();
 
     NRF_TWIM0->PSEL.SCL = 26; // set i2c scl to external pin 20
     NRF_TWIM0->PSEL.SDA = 32; // set i2c sda to external pin 19
@@ -89,50 +117,51 @@ void cnf_camera(){
     send_i2c_cmd(&select_sensor_bank);
     send_i2c_cmd(&reset);
 
-    NRF_TIMER2->TASKS_STOP = 1; // stop other timers
-    NRF_TIMER2->BITMODE = 3; // 32 bit
-    NRF_TIMER2->CC[0] = 100000; // set cmp to time
-    NRF_TIMER2->PRESCALER = 4;
-
-    // clear flags
-    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
-    NRF_TIMER2->TASKS_CLEAR = 1;
-
-    // wait for delay to be met
-    NRF_TIMER2->TASKS_START = 1;
-    while(NRF_TIMER2->EVENTS_COMPARE[0] == 0);
-    
-    // clear flags
-    NRF_TIMER2->TASKS_STOP = 1;
-    NRF_TIMER2->TASKS_CLEAR = 1;
-    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
+    slp_100ms();
 
     for(uint32_t i = 0; !(OV2640_JPEG_INIT[i].reg == 0xFF && OV2640_JPEG_INIT[i].val == 0xFF); i++){
         volatile sensor_reg * row_ptr = &OV2640_JPEG_INIT[i];
         send_i2c_cmd(row_ptr);
-    }    
+    }
 
-    for(uint32_t i = 0; !(OV2640_640x480_JPEG[i].reg == 0xFF && OV2640_640x480_JPEG[i].val == 0xFF); i++){
-        volatile sensor_reg * row_ptr = &OV2640_640x480_JPEG[i];
-        send_i2c_cmd(row_ptr); 
+    for(uint32_t i = 0; !(OV2640_YUV422[i].reg == 0xFF && OV2640_YUV422[i].val == 0xFF); i++){
+        volatile sensor_reg * row_ptr = &OV2640_YUV422[i];
+        send_i2c_cmd(row_ptr);
+    }
+
+    for(uint32_t i = 0; !(OV2640_JPEG[i].reg == 0xFF && OV2640_JPEG[i].val == 0xFF); i++){
+        volatile sensor_reg * row_ptr = &OV2640_JPEG[i];
+        send_i2c_cmd(row_ptr);
+    }
+
+    volatile sensor_reg vsync_fix = {0x15, 0x00};
+
+    send_i2c_cmd(&select_sensor_bank); // Ensure we are in the sensor bank
+    send_i2c_cmd(&vsync_fix);
+
+    for(uint32_t i = 0; !(OV2640_320x240_JPEG[i].reg == 0xFF && OV2640_320x240_JPEG[i].val == 0xFF); i++){
+        volatile sensor_reg * row_ptr = &OV2640_320x240_JPEG[i];
+        send_i2c_cmd(row_ptr);
     }
 
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
 
 void write_cam_reg(sensor_reg reg){
+    reg.reg |= 0x80;
     spi_send_arr((uint32_t) &reg, 2, false);
 }
 
 uint8_t read_cam_reg(uint8_t reg){
+    reg &= 0x7F;
     // clear event registers
     NRF_SPIM3->EVENTS_END = 0;
-    volatile uint16_t send_packet = reg | (0x00 << 8);
+    volatile uint8_t send_packet = reg | (0x00 << 8);
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = (uint32_t) &send_packet; 
     NRF_SPIM3->TXD.MAXCNT = 2; 
 
-    volatile uint8_t value;
+    volatile uint16_t value;
 
     NRF_SPIM3->RXD.MAXCNT = 2;
     NRF_SPIM3->RXD.PTR = (uint32_t) &value;
@@ -145,18 +174,18 @@ uint8_t read_cam_reg(uint8_t reg){
 
     NRF_SPIM3->TASKS_STOP = 1; // stop when both happen
 
-    NRF_P0->OUTSET = (1 << CAM_CSN); // set CS high
+    NRF_P0->OUTSET = (1 << CAM_CSN); // set CS high 
     
-    return value;
+    return value >> 8;
 }
 
 void get_img(){
     cnf_spi_pins();
 
-    write_cam_reg({ 0x04, 0b00110001 });  // clear FIFO and reset r/w pointers
+    write_cam_reg({ 0x04, 0x01 }); // ONLY clear the FIFO flag
     write_cam_reg({ 0x04, 0x02 });  // start capture
 
-    while(!(read_cam_reg(0x41) & 0x09)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag, with 0x01 for vsync going low
+    while(!(read_cam_reg(0x41) & 0x08)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag, with 0x01 for vsync going low
 
     // read each byte of the image buffer's size in memory
     volatile uint8_t size1 = read_cam_reg(0x42);
