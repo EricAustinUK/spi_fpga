@@ -3,7 +3,10 @@
 
 #define CAM_CSN 9
 #define NANO_CSN 4
-#define IMG_SIZE 160*120*2
+#define IMG_SIZE (320*240/8)
+#define BUFFER_COUNT 4
+#define BUFFER_SIZE (320*240*2/BUFFER_COUNT)
+
 
 void slp_100(){
     NRF_TIMER2->TASKS_STOP = 1; // stop other timers
@@ -90,25 +93,50 @@ void cnf_camera(){
     if(cfgd) return;
     cfgd = true;
 
-    NRF_TWIM0->PSEL.SCL = 26; // set i2c scl to external pin 20
     NRF_TWIM0->PSEL.SDA = 32; // set i2c sda to external pin 19
+    NRF_TWIM0->PSEL.SCL = 26; // set i2c scl to external pin 20
     NRF_TWIM0->FREQUENCY = 0x06400000; // frequency to 400kHz
     NRF_TWIM0->ENABLE = 0b110; // enable twim peripheral
     NRF_TWIM0->ADDRESS = 0x30; // set to arducams address
 
 
+    volatile sensor_reg init_cmd = { 0x0A, 0x0B };
     volatile sensor_reg select_sensor_bank = { 0xFF, 0x01 };
     volatile sensor_reg reset = { 0x12, 0x80 }; // must send reset for some reason!
 
+    send_i2c_cmd(&init_cmd);
     send_i2c_cmd(&select_sensor_bank);
     send_i2c_cmd(&reset);
 
     slp_100();
 
-    for(uint32_t i = 0; !(OV2640_QVGA[i].reg == 0xFF && OV2640_QVGA[i].val == 0xFF); i++){
+    for(uint32_t i = 0; i < sizeof(OV2640_QVGA)/sizeof(sensor_reg); i++){
         volatile sensor_reg * row_ptr = &OV2640_QVGA[i];
         send_i2c_cmd(row_ptr);
-    }    
+    }   
+    
+    send_i2c_cmd(&select_sensor_bank);
+
+    for(uint32_t i = 0; i < sizeof(OV2640_YUV422)/sizeof(sensor_reg); i++){
+        volatile sensor_reg * row_ptr = &OV2640_YUV422[i];
+        send_i2c_cmd(row_ptr);
+    }   
+    
+    
+    for(uint32_t i = 0; i < sizeof(OV2640_320x240_JPEG)/sizeof(sensor_reg); i++){
+        volatile sensor_reg * row_ptr = &OV2640_320x240_JPEG[i];
+        send_i2c_cmd(row_ptr);
+    }   
+
+    volatile sensor_reg select_dsp_bank = { 0xFF, 0x00 };
+    volatile sensor_reg disable_jpeg = { 0xDA, 0x00 };
+    volatile sensor_reg control_bit = { 0xC2, 0x0C };
+    
+
+    send_i2c_cmd(&select_dsp_bank);
+    send_i2c_cmd(&disable_jpeg);
+    send_i2c_cmd(&control_bit);
+    
 
     NRF_TWIM0->ENABLE = 0; // disable twim peripheral
 }
@@ -144,70 +172,60 @@ uint8_t read_cam_reg(uint8_t reg){
     return value >> 8;
 }
 
-uint8_t * spi_recv_img(uint32_t size){
-    static uint8_t values[IMG_SIZE];
+void spi_recv_img(volatile uint8_t * values, uint8_t threshold){
+    static uint8_t buffer[(BUFFER_SIZE) + 1];
 
-    cnf_spi_pins();
-    volatile uint8_t burst_cmd = 0x3C;
+    for(volatile uint8_t i = 0; i < BUFFER_COUNT; i++){
 
-    // clear event registers
-    NRF_SPIM3->EVENTS_END = 0;
+        cnf_spi_pins();
+        volatile uint8_t burst_cmd = 0x3C;
 
-    // configure TX buffer
-    NRF_SPIM3->TXD.PTR = (uint32_t)&burst_cmd; 
-    NRF_SPIM3->TXD.MAXCNT = 1; 
+        // clear event registers
+        NRF_SPIM3->EVENTS_END = 0;
 
-    NRF_SPIM3->RXD.PTR = (uint32_t) &values;
-    NRF_SPIM3->RXD.MAXCNT = IMG_SIZE;
+        // configure TX buffer
+        NRF_SPIM3->TXD.PTR = (uint32_t)&burst_cmd; 
+        NRF_SPIM3->TXD.MAXCNT = 1; 
+        NRF_SPIM3->ORC = 0x00;
 
-    NRF_P0->OUTCLR = (1 << CAM_CSN); // set CS low
-    
-    NRF_SPIM3->TASKS_START = 1; // start sending array
+        NRF_SPIM3->RXD.PTR = (uint32_t) &buffer;
+        NRF_SPIM3->RXD.MAXCNT = BUFFER_SIZE + 1;
 
-    while(NRF_SPIM3->EVENTS_END==0); // busy wait for last TX and RX byte
+        NRF_P0->OUTCLR = (1 << CAM_CSN); // set CS low
+        
+        NRF_SPIM3->TASKS_START = 1; // start sending array
 
-    NRF_P0->OUTSET = (1 << CAM_CSN); // set CS high
+        while(NRF_SPIM3->EVENTS_END==0); // busy wait for last TX and RX byte
 
-    NRF_SPIM3->TASKS_STOP = 1; // stop sending when buffer is sent
+        NRF_P0->OUTSET = (1 << CAM_CSN); // set CS high
 
-    return values;
+        NRF_SPIM3->TASKS_STOP = 1; // stop sending when buffer is sent
+        
+        for(volatile uint32_t j = 1; j < BUFFER_SIZE + 1; j+=2){
+            volatile uint32_t pixel_num = i*(BUFFER_SIZE/2) + (j-1)/2;
+            volatile uint32_t output_index = pixel_num >> 3; 
+            volatile uint8_t byte_index = pixel_num & 0x07;
+            volatile uint8_t buffer_value = buffer[j];
+            values[output_index] |=  (buffer_value >= threshold ? 1 : 0) << (byte_index ^ 0x07);
+        }
+
+    }
+
+    return;
 }
 
-void get_img(){
-    cnf_spi_pins();
-
-    write_cam_reg({ 0x04, 0x01 });  // clear FIFO
-    write_cam_reg({ 0x04, 0x10 });  // clear FIFO start pointer
-    write_cam_reg({ 0x04, 0x20 });  // clear FIFO end pointer
-    
-    // wait for vsync low
-    while(read_cam_reg(0x41) & 0x01);
-    // wait for vsync high
-    while(!(read_cam_reg(0x41) & 0x01));
-    
-    write_cam_reg({ 0x04, 0x02 });  // start capture
-
-    
-
-    while(!(read_cam_reg(0x41) & 0x08)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag, with 0x01 for vsync going low
-
-    // read each byte of the image buffer's size in memory
-    //volatile uint8_t size1 = read_cam_reg(0x42);
-    //volatile uint8_t size2 = read_cam_reg(0x43);
-    //volatile uint8_t size3 = read_cam_reg(0x44);
-
-    //write_cam_reg({ 0xFF, 0x00 }); // switch back to default reg?
-
-    //volatile uint32_t size = ((size3 << 16) | (size2 << 8) | size1) & 0x07ffffff; // mask because size3 may contain random data in its more significant bits
-
-    
-
-    spi_recv_img(IMG_SIZE); // yolo
-}
-
-void spi_get_img(){
+void get_img(volatile uint8_t * output, uint8_t threshold){
     cnf_spi_pins();
     cnf_camera();
-    slp_100();
-    get_img();  
+
+    for(int i = 0; i < 20; i++)
+        slp_100();
+
+    write_cam_reg({ 0x04, 0x01 });  // clear FIFO
+
+    write_cam_reg({ 0x04, 0x02 });  // start capture
+
+    while(!(read_cam_reg(0x41) & 0x08)); // 0x41 is the trigger register and 0x08 is the bitmask for the capture done flag
+
+    spi_recv_img(output, threshold);
 }

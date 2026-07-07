@@ -5,6 +5,9 @@
         "branch": "master",
         "type": "git"
     },
+    "cmake_definitions": {
+        "SOFTDEVICE_PRESENT": "0"
+    },
     "config":{
         "MICROBIT_BLE_ENABLED" : 0,
         "MICROBIT_BLE_PAIRING_MODE": 0

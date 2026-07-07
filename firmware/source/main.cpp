@@ -1,7 +1,9 @@
 #include "nrf.h"
+#define GREYSCALE_IMG_SIZE (320*240/8)
+#define PIXEL_THRESHOLD 0x35
 
 extern void spi_send_arr(volatile uint32_t arr_ptr, uint32_t size, bool is_to_nano);
-extern void spi_get_img();
+extern void get_img(volatile uint8_t * output, uint8_t threshold);
 
 void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1; // stop other timers
@@ -21,6 +23,11 @@ void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1;
     NRF_TIMER1->TASKS_CLEAR = 1;
     NRF_TIMER1->EVENTS_COMPARE[0] = 0;
+}
+
+
+void inference_loop(){
+
 }
 
 int main()
@@ -61,8 +68,9 @@ int main()
         spi_send_arr((uint32_t) &test_image[i], 4, true);
         busy_sleep(20);
     }
-
-
-    spi_get_img();
+    while(true){    
+        inference_loop();
+        static volatile uint8_t img_buffer[GREYSCALE_IMG_SIZE];
+        get_img(img_buffer, PIXEL_THRESHOLD);
+    }
 }
-
