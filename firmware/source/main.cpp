@@ -2,7 +2,7 @@
 #define IMG_H 240
 #define IMG_W 320
 #define GREYSCALE_IMG_SIZE (IMG_W*IMG_H/8)
-#define PIXEL_THRESHOLD 0x35
+#define PIXEL_THRESHOLD 0x35 // MAY NEED TO MAKE ADAPTIVE
 #define BLANK_THRESHOLD 5
 
 extern void spi_send_arr(volatile uint32_t arr_ptr, uint32_t size, bool is_to_nano);
@@ -89,12 +89,10 @@ void inference_loop(){
             uint16_t y = pixel_num / IMG_W;
             min_x = (x < min_x ? x : min_x);
             max_x = (x > max_x ? x : max_x);
-            min_y = (x < min_y ? x : min_y);
-            max_y = (x > max_y ? x : max_y);
+            min_y = (y < min_y ? x : min_y);
+            max_y = (y > max_y ? x : max_y);
         }
     }
-
-
 }
 
 int main()
