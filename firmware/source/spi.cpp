@@ -4,7 +4,7 @@
 #define CAM_CSN 9
 #define NANO_CSN 4
 #define IMG_SIZE (320*240/8)
-#define BUFFER_COUNT 4
+#define BUFFER_COUNT 5
 #define BUFFER_SIZE (320*240*2/BUFFER_COUNT)
 
 
@@ -172,10 +172,10 @@ uint8_t read_cam_reg(uint8_t reg){
     return value >> 8;
 }
 
-void spi_recv_img(volatile uint8_t * values, uint8_t threshold){
-    static uint8_t buffer[(BUFFER_SIZE) + 1];
+void spi_recv_img(uint8_t * values, uint8_t threshold){
+    static volatile uint8_t buffer[(BUFFER_SIZE) + 1];
 
-    for(volatile uint8_t i = 0; i < BUFFER_COUNT; i++){
+    for(uint8_t i = 0; i < BUFFER_COUNT; i++){
 
         cnf_spi_pins();
         volatile uint8_t burst_cmd = 0x3C;
@@ -201,11 +201,11 @@ void spi_recv_img(volatile uint8_t * values, uint8_t threshold){
 
         NRF_SPIM3->TASKS_STOP = 1; // stop sending when buffer is sent
         
-        for(volatile uint32_t j = 1; j < BUFFER_SIZE + 1; j+=2){
-            volatile uint32_t pixel_num = i*(BUFFER_SIZE/2) + (j-1)/2;
-            volatile uint32_t output_index = pixel_num >> 3; 
-            volatile uint8_t byte_index = pixel_num & 0x07;
-            volatile uint8_t buffer_value = buffer[j];
+        for(uint32_t j = 1; j < BUFFER_SIZE + 1; j+=2){
+            uint32_t pixel_num = i*(BUFFER_SIZE/2) + (j-1)/2;
+            uint32_t output_index = pixel_num >> 3; 
+            uint8_t byte_index = pixel_num & 0x07;
+            uint8_t buffer_value = buffer[j];
             values[output_index] |=  (buffer_value >= threshold ? 1 : 0) << (byte_index ^ 0x07);
         }
 
@@ -214,7 +214,7 @@ void spi_recv_img(volatile uint8_t * values, uint8_t threshold){
     return;
 }
 
-void get_img(volatile uint8_t * output, uint8_t threshold){
+void get_img(uint8_t * output, uint8_t threshold){
     cnf_spi_pins();
     cnf_camera();
 
