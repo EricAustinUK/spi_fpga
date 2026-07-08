@@ -2,11 +2,11 @@
 #define IMG_H 240
 #define IMG_W 320
 #define GREYSCALE_IMG_SIZE (IMG_W*IMG_H/8)
-#define PIXEL_THRESHOLD 0x35 // MAY NEED TO MAKE ADAPTIVE
+#define INIT_PIXEL_THRESHOLD 0x35 // MAY NEED TO MAKE ADAPTIVE
 #define BLANK_THRESHOLD 5
 
 extern void spi_send_arr(volatile uint32_t arr_ptr, uint32_t size, bool is_to_nano);
-extern void get_img(uint8_t * output, uint8_t threshold);
+extern void get_img(uint8_t * output, uint8_t * threshold);
 
 void busy_sleep(uint32_t delay_us){
     NRF_TIMER1->TASKS_STOP = 1; // stop other timers
@@ -72,9 +72,9 @@ bool is_noise(uint8_t * img_buffer, uint32_t pixel_num){
     return false;
 }
 
-void inference_loop(){
-    static uint8_t raw_img_buffer[GREYSCALE_IMG_SIZE];
-    get_img(raw_img_buffer, PIXEL_THRESHOLD);
+void inference_loop(uint8_t * threshold){
+    static uint8_t raw_img_buffer[GREYSCALE_IMG_SIZE] = {0};
+    get_img(raw_img_buffer, threshold);
     uint16_t min_x = IMG_H;
     uint16_t max_x = 0;
     uint16_t min_y = IMG_W;
@@ -93,6 +93,8 @@ void inference_loop(){
             max_y = (y > max_y ? x : max_y);
         }
     }
+
+    while(true);
 }
 
 int main()
@@ -133,7 +135,8 @@ int main()
         spi_send_arr((uint32_t) &test_image[i], 4, true);
         busy_sleep(20);
     }
+    uint8_t threshold = INIT_PIXEL_THRESHOLD;
     while(true){    
-        inference_loop();
+        inference_loop(&threshold);
     }
 }

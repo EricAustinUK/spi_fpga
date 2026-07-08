@@ -172,8 +172,9 @@ uint8_t read_cam_reg(uint8_t reg){
     return value >> 8;
 }
 
-void spi_recv_img(uint8_t * values, uint8_t threshold){
+void spi_recv_img(uint8_t * values, uint8_t * threshold){
     static volatile uint8_t buffer[(BUFFER_SIZE) + 1];
+    uint32_t otsu_hist[16] = {0};
 
     for(uint8_t i = 0; i < BUFFER_COUNT; i++){
 
@@ -206,15 +207,17 @@ void spi_recv_img(uint8_t * values, uint8_t threshold){
             uint32_t output_index = pixel_num >> 3; 
             uint8_t byte_index = pixel_num & 0x07;
             uint8_t buffer_value = buffer[j];
-            values[output_index] |=  (buffer_value >= threshold ? 1 : 0) << (byte_index ^ 0x07);
+            otsu_hist[buffer_value >> 4] += 1; 
+            values[output_index] |=  (buffer_value >= * threshold ? 1 : 0) << (byte_index ^ 0x07); // gotta XOR byte index to go from lsb -> msb
         }
-
     }
+
+    
 
     return;
 }
 
-void get_img(uint8_t * output, uint8_t threshold){
+void get_img(uint8_t * output, uint8_t * threshold){
     cnf_spi_pins();
     cnf_camera();
 
