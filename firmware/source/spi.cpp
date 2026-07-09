@@ -61,10 +61,11 @@ void spi_send_arr(volatile uint32_t arr_ptr, uint32_t size, bool is_to_nano){
     // clear event registers
     NRF_SPIM3->EVENTS_END = 0;
 
-    if(is_to_nano) *((uint32_t *) arr_ptr) = __REV(arr_ptr);
     // configure TX buffer
     NRF_SPIM3->TXD.PTR = arr_ptr; 
     NRF_SPIM3->TXD.MAXCNT = size; 
+
+    NRF_SPIM3->RXD.MAXCNT = 0;
 
     NRF_P0->OUTCLR = (1 << (is_to_nano ? NANO_CSN : CAM_CSN)); // set CS low
     
@@ -209,10 +210,10 @@ void spi_recv_img(uint8_t * values, uint8_t * threshold){
         for(uint32_t j = 1; j < BUFFER_SIZE + 1; j+=2){
             uint32_t pixel_num = i*(BUFFER_SIZE/2) + (j-1)/2;
             uint32_t output_index = pixel_num >> 3; 
-            uint8_t byte_index = pixel_num & 0x07;
+            uint8_t bit_index = pixel_num & 0x07;
             uint8_t buffer_value = buffer[j];
             bucket_hist[buffer_value >> 3] += 1; 
-            values[output_index] &=  ~((buffer_value <= *threshold ? 1 : 0) << (byte_index^0x7));
+            values[output_index] &=  ~((buffer_value <= *threshold ? 1 : 0) << (bit_index^0x7));
         }
     }
 

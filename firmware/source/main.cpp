@@ -74,11 +74,11 @@ bool is_noise(uint8_t * img_buffer, uint32_t pixel_num){
 
 void inference_loop(uint8_t * threshold){
     static uint8_t raw_img_buffer[GREYSCALE_IMG_SIZE];
-    for(uint16_t i; i<GREYSCALE_IMG_SIZE; i++) raw_img_buffer[i] = 0xFF;
+    for(uint16_t i = 0; i<GREYSCALE_IMG_SIZE; i++) raw_img_buffer[i] = 0xFF;
     get_img(raw_img_buffer, threshold);
-    uint16_t min_x = IMG_H;
+    uint16_t min_x = IMG_W;
     uint16_t max_x = 0;
-    uint16_t min_y = IMG_W;
+    uint16_t min_y = IMG_H;
     uint16_t max_y = 0;
 
     for(uint16_t i = 0; i < GREYSCALE_IMG_SIZE; i++){
@@ -90,55 +90,85 @@ void inference_loop(uint8_t * threshold){
             uint16_t y = pixel_num / IMG_W;
             min_x = (x < min_x ? x : min_x);
             max_x = (x > max_x ? x : max_x);
-            min_y = (y < min_y ? x : min_y);
-            max_y = (y > max_y ? x : max_y);
+            min_y = (y < min_y ? y : min_y);
+            max_y = (y > max_y ? y : max_y);
         }
     }
 
-    volatile uint8_t i = 1;
-    i++;
+    // needs another step before these boundaries are accepted, for now just early return if data is obvious garbage
+    if ((max_x - min_x) > (IMG_W*3/4) || (max_y - min_y) > (IMG_H*3/4)) return;
+    if ((max_x - min_x) > 255 || (max_y - min_y) > 255) return; // so i can use 8 bit
+    if ((max_x - min_x) < 20 && (max_y - min_y) < 20) return;
+    
+    // lets use nearest neighbour first
+    volatile uint32_t grid[28];
+    for(uint8_t i = 0; i < 28; i++)
+        grid[i] = 0x0fffffff;
+    uint8_t raw_w = max_x - min_x;
+    uint8_t raw_h = max_y - min_y;
+    // maintain aspect ratio by setting biggest dimension to 20px
+    uint8_t new_w = raw_w < raw_h ? (20*raw_w) / raw_h : 20;
+    uint8_t new_h = raw_w > raw_h ? (20*raw_h) / raw_w : 20;
+
+    // centre of mass calculations
+    int32_t col_acc = 0;
+    int32_t row_acc = 0;
+    uint16_t pxn_acc = 0;
+    uint16_t mid_col = (max_x-min_x) / 2;
+    uint16_t mid_row = (max_y-min_y) / 2;
+
+    for(uint16_t i = min_y; i <= max_y; i++){
+        for(uint16_t j = min_x; j <= max_x; j++){
+            if(!is_pixel_blank(raw_img_buffer, i*IMG_W + j)){
+                col_acc += j;
+                row_acc += i;
+                pxn_acc++;
+            }
+        }
+    }
+
+    if(pxn_acc == 0) return; // no pixels?? 
+
+    int16_t raw_com_x_offset = (col_acc / pxn_acc) - (min_x + mid_col);
+    int16_t raw_com_y_offset = (row_acc / pxn_acc) - (min_y + mid_row);
+    
+
+    for(uint8_t i = 0; i < new_h; i++){
+        for(uint8_t j = 0; j < new_w; j++){
+            uint16_t raw_x_px = (((uint32_t) j * raw_w) / new_w) + min_x + raw_com_x_offset;
+            uint16_t raw_y_px = (((uint32_t) i * raw_h) / new_h) + min_y + raw_com_y_offset;
+            
+            uint16_t grid_x = j + (28-new_w)/2;
+            uint16_t grid_y = i + (28-new_h)/2;
+            
+            uint8_t grid_bit_index = 27 - grid_x;
+            uint32_t pixel_num = raw_y_px * IMG_W + raw_x_px;
+
+            
+            uint8_t mass_acc = 0;
+            if(!is_pixel_blank(raw_img_buffer, pixel_num))
+                mass_acc++;
+            if(raw_x_px > 0 && !is_pixel_blank(raw_img_buffer, pixel_num - 1))
+                mass_acc++;
+            if(raw_x_px < (IMG_W-1) && !is_pixel_blank(raw_img_buffer, pixel_num + 1))
+                mass_acc++;
+            if(raw_y_px > 0 && !is_pixel_blank(raw_img_buffer, pixel_num - IMG_W))
+                mass_acc++;
+            if(raw_y_px < (IMG_H-1) && !is_pixel_blank(raw_img_buffer, pixel_num + IMG_W))
+                mass_acc++;
+            if(mass_acc >= 2)
+                grid[grid_y] &= ~(1 << grid_bit_index);
+            
+        }
+    }
+
+    for(uint8_t i = 0; i < 28; i++)
+        spi_send_arr((uint32_t) &grid[i], 4, true);
 }
 
 int main()
 {
-    // A 28x28 matrix pattern with varied row boundaries and a diagonal step
-    volatile uint32_t test_image[28] = {
-        0x0AFFFFFF,
-        0x0FFFFF0A,
-        0x05555555,
-        0x0AAAAAAA,
-        0x0F000000,
-        0x03C00000,
-        0x00F00000,
-        0x003C0000,
-        0x000F0000,
-        0x0003C000,
-        0x0000F000,
-        0x00003C00,
-        0x00000F00,
-        0x000003C0,
-        0x000000F0,
-        0x0000003C,
-        0x0000000F,
-        0x08000000,
-        0x00000001,
-        0x08000001,
-        0x04000002,
-        0x02000004,
-        0x01000008,
-        0x00000000,
-        0x00000000,
-        0x05555555,
-        0x0AAAAAAA,
-        0x0FFFFFFF
-    };    
-
-    for(int i = 0; i < 28; i++){
-        spi_send_arr((uint32_t) &test_image[i], 4, true);
-        busy_sleep(20);
-    }
     uint8_t threshold = INIT_PIXEL_THRESHOLD;
-    while(true){    
+    while(true)
         inference_loop(&threshold);
-    }
 }
