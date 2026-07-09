@@ -6,8 +6,8 @@
 #define IMG_SIZE (320*240/8)
 #define BUFFER_COUNT 4
 #define BUFFER_SIZE (320*240*2/BUFFER_COUNT)
-#define THRESHOLD_SET_COUNT_MIN 4000
-#define THRESHOLD_SET_COUNT_MAX 8000
+#define THRESHOLD_SET_COUNT_MIN 2000
+#define THRESHOLD_SET_COUNT_MAX 4000
 
 
 void slp_100(){
@@ -176,9 +176,9 @@ uint8_t read_cam_reg(uint8_t reg){
 
 void spi_recv_img(uint8_t * values, uint8_t * threshold){
     static volatile uint8_t buffer[(BUFFER_SIZE) + 1];
-    uint32_t bucket_hist[32];
+    uint32_t bucket_hist[64];
     
-    for(uint8_t i; i<32; i++) bucket_hist[i] = 0;
+    for(uint8_t i = 0; i < 64; i++) bucket_hist[i] = 0;
 
     for(uint8_t i = 0; i < BUFFER_COUNT; i++){
 
@@ -212,19 +212,16 @@ void spi_recv_img(uint8_t * values, uint8_t * threshold){
             uint8_t byte_index = pixel_num & 0x07;
             uint8_t buffer_value = buffer[j];
             bucket_hist[buffer_value >> 3] += 1; 
-            values[output_index] &=  ~((buffer_value < *threshold ? 1 : 0) << (byte_index^0x7));
+            values[output_index] &=  ~((buffer_value <= *threshold ? 1 : 0) << (byte_index^0x7));
         }
     }
 
     uint32_t pixel_acc = 0;
-    for(uint8_t i = 0; i < 32; i++){
+    for(uint8_t i = 0; i < 64; i++){
         pixel_acc += bucket_hist[i];
-        // set to bucket where first 200 pixels are but dont overshoot if too high
-        if(pixel_acc > THRESHOLD_SET_COUNT_MAX){
-            break;
-        }
+        if(pixel_acc > THRESHOLD_SET_COUNT_MAX) break;
         if(pixel_acc > THRESHOLD_SET_COUNT_MIN){ 
-            *threshold = (i+1) << 3;
+            *threshold = (i+1) >> 3 -  1;
             break;
         }
     }
