@@ -168,7 +168,7 @@ module nn_pass_hl#(
     output reg o_data_ready // result's ready flag
 );
 
-reg [(N_INPUTS):0] neuron_weights; // register cache for each input's weights
+reg [(N_INPUTS-1):0] neuron_weights; // register cache for each input's weights
 
 
 
