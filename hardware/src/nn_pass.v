@@ -93,7 +93,6 @@ reg prev_proc = 0;
 wire [5:0] counted;
 
 // popcount of row XNOR weights
-
 popcount #(.WORDLENGTH(28)) pc(
     .i_bits(~(i_row ^ current_weights)),
     .o_popcount(counted)
@@ -159,7 +158,8 @@ endmodule
 
 module nn_pass_hl#(
     parameter N_INPUTS = 67,
-    parameter N_NEURONS = 67
+    parameter N_NEURONS = 67,
+    parameter BNN_THRESHOLD = 14
 )(
     input wire i_clk,
     input i_data_ready,
