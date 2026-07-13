@@ -9,7 +9,7 @@ module nn_pass(
 wire [63:0] _l1_pass_result;
 wire [255:0] _l2_pass_result;
 wire [127:0] _l3_pass_result;
-reg [76:0] _l4_pass_result;
+wire [76:0] _l4_pass_result;
 
 wire _l1_data_ready, _l2_data_ready, _l3_data_ready, _l4_data_ready; 
 
@@ -21,31 +21,31 @@ nn_pass_l1 l1(
     .o_data_ready(_l1_data_ready)
 );
 
-nn_pass_l2 l2(
+nn_pass_hl#(64, 256) l2(
     .i_clk(i_clk),
     .i_data_ready(_l1_data_ready),
-    .i_l1(_l1_pass_result),
+    .i_prev(_l1_pass_result),
     .o_pass_result(_l2_pass_result),
     .o_data_ready(_l2_data_ready)
 );
 
-/*
-
-nn_pass_l3 l3(
+nn_pass_hl#(256, 128) l3(
     .i_clk(i_clk),
     .i_data_ready(_l2_data_ready),
-    .i_l2(_l2_pass_result),
+    .i_prev(_l2_pass_result),
     .o_pass_result(_l3_pass_result),
     .o_data_ready(_l3_data_ready)
 );
 
-nn_pass_l4 l4(
+nn_pass_output l4(
     .i_clk(i_clk),
     .i_data_ready(_l3_data_ready),
-    .i_l3(_l3_pass_result),
+    .i_hl(_l3_pass_result),
     .o_pass_result(_l4_pass_result),
     .o_data_ready(_l4_data_ready)
 );
+
+/*
 
 nn_argmax max(
     .i_clk(i_clk),
@@ -90,7 +90,15 @@ reg [4:0] prev_row_no = 5'd0; // row number
 reg [5:0] prev_neuron_no = 6'd0; // neuron number
 reg prev_proc = 0;
 
-reg [4:0] counted = 5'd0;
+wire [5:0] counted;
+
+// popcount of row XNOR weights
+
+popcount #(.WORDLENGTH(28)) pc(
+    .i_bits(~(i_row ^ current_weights)),
+    .o_popcount(counted)
+); 
+
 reg [9:0] acc_val = 10'd0;
 
 always @(posedge i_clk) begin
@@ -130,9 +138,8 @@ always @(posedge i_clk) begin
 
     // delayed pipelining, behind by a cycle
     if (prev_proc) begin
-        counted = popcount(~(i_row ^ current_weights)); // popcount of row XNOR weights
         // if new row, overwrite accumulator with count, otherwise increment
-        acc_val = (prev_row_no == 0) ? counted : (l1_pass_acc[prev_neuron_no] + counted);
+        acc_val <= (prev_row_no == 0) ? counted : (l1_pass_acc[prev_neuron_no] + counted);
 
         // add to forward pass accumulator array
         l1_pass_acc[prev_neuron_no] <= acc_val;
@@ -150,15 +157,18 @@ end
 
 endmodule
 
-module nn_pass_l2(
+module nn_pass_hl#(
+    parameter N_INPUTS = 67,
+    parameter N_NEURONS = 67
+)(
     input wire i_clk,
     input i_data_ready,
-    input [63:0] i_l1, // input from layer 1
-    output reg [255:0] o_pass_result, // layer 2 result
+    input [(N_INPUTS-1):0] i_prev, // input from previous layer
+    output reg [(N_NEURONS-1):0] o_pass_result, // layer result
     output reg o_data_ready // result's ready flag
 );
 
-reg [63:0] neuron_weights; // register cache for each input's weights
+reg [(N_INPUTS):0] neuron_weights; // register cache for each input's weights
 
 
 
@@ -169,30 +179,11 @@ end
 endmodule
 
 
-module nn_pass_l3(
+module nn_pass_output(
     input wire i_clk,
     input i_data_ready,
-    input [255:0] i_l2, // input from layer 2
-    output reg [127:0] o_pass_result, // layer 3 result
-    output reg o_data_ready // result's ready flag
-);
-
-reg [255:0] neuron_weights; // register cache for each input's weights
-
-
-
-always @(posedge i_clk) begin
-    
-end
-
-endmodule
-
-
-module nn_pass_l4(
-    input wire i_clk,
-    input i_data_ready,
-    input [127:0] i_l3, // input from layer 3
-    output reg [76:0] o_pass_result, // layer 4 result - will output the raw acc results then handle seperately
+    input [127:0] i_hl, // input from final hidden layer
+    output reg [76:0] o_pass_result, // output result - will output the raw acc results then handle seperately
     output reg o_data_ready // result's ready flag
 );
 
