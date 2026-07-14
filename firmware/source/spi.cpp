@@ -226,7 +226,7 @@ void spi_recv_img(uint8_t * values, uint8_t * threshold){
         pixel_acc += bucket_hist[i];
         if(pixel_acc > THRESHOLD_SET_COUNT_MAX) break;
         if(pixel_acc > THRESHOLD_SET_COUNT_MIN){ 
-            *threshold = (i+1) >> 3 -  1;
+            *threshold = ((i+1) >> 3) -  1;
             break;
         }
     }

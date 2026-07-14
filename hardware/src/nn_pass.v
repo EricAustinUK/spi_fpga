@@ -212,3 +212,12 @@ always @(*) begin
 end
 
 endmodule
+
+module weight_reader(
+    input wire i_clk,
+    input wire i_request,
+    input wire [10:0] i_word_addr,
+    output reg [31:0] word,
+    output reg o_valid
+);
+

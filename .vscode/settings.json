@@ -1,4 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/eric/Documents/Projects/spi_fpga/firmware",
+    "cmake.sourceDirectory": "/home/eric/Documents/Projects/mnist_bnn_fpga/firmware",
     "cmake.buildDirectory": "${workspaceFolder}/firmware/build"
 }
